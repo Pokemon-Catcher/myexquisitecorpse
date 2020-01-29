@@ -48,7 +48,7 @@ io.on('connection', function(socket){
 	});
 });
 
-http.listen(80, function () {
+http.listen(3000, function () {
   console.log('Example app listening on port 80!');
 });
 update();

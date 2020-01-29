@@ -1,0 +1,155 @@
+<!doctype html>
+<html>
+  <head>
+    <title>Exquisite Corpse</title>
+	<style>
+		#container {
+		  position: relative;
+		  border: 1px solid black;
+
+		  width:2000px;
+		  height:2000px;
+		}
+		#canvas1 {
+		  position: absolute;
+		  left: 0;
+		  top: 0;
+		  border: 3px solid green;
+		  width:100%;
+		  height:100%;
+		}
+		#drawing-area {
+		  position: absolute;
+		  left: 0;
+		  top: 0;
+		  border: 2px solid red;
+		  width:100%;
+		  height:100%;
+		}
+		#controls {
+			position: fixed;
+			bottom: 2%;
+			left: 2%;
+			padding: 1%; /* Поля вокруг текста */
+			border: 2px solid rgba(100, 100, 20, 0.5);
+			background: rgba(100, 50, 20, 0.1);
+		}
+		#peoples{
+			position: fixed;
+			bottom:2%;
+			right:2%;
+			height:10%;
+			width:18%;
+			overflow:hidden; 
+			overflow-y:scroll;
+			border: 2px solid black;
+			opacity: 0.5;
+		}
+		</style>
+  </head>
+  <body>
+	<div id="container">
+		<canvas  id="canvas" width="2000" height="2000"></canvas>
+		<canvas  id="drawing-area" width="2000" height="2000"></canvas>
+	</div>
+	<div id="controls">
+		<div>
+			<input type="color" id="border" name="border"
+				   value="#000000">
+			<label for="border">Color</label>
+		</div>
+		<div>
+		  <input type="range" id="width" name="width"
+				 min="1" max="9" value="3">
+		  <label for="width">Width: 3</label>
+		</div>
+	</div>
+	<div id="peoples">
+		<ul>
+			<li>Person 1</li>
+			<li>Person 2</li>
+			<li>Person 3</li>
+		</ul>
+	</div>
+	<script src="/socket.io/socket.io.js"></script>
+	<script src="https://code.jquery.com/jquery-1.11.1.js"></script>
+	<script>
+	$(function() {
+	var socket = io();
+	var	oldMousePos = {};
+	var canvas=$('.drawing-area')[0];
+    //the drawdot function draws a 5 * 5 pixel rectangle of the specified color at the specified x and y location
+	function drawLine(context, color, begin, end, width) {
+		context.strokeStyle = $("#border").val();
+		context.fillStyle = $("#fill").val();
+		context.beginPath();       // Начинает новый путь
+		context.moveTo(begin.x, begin.y);    // Рередвигает перо в точку (30, 50)
+		context.lineTo(end.x, end.y);
+		context.lineWidth = $("#width").val();
+		context.stroke();  
+	}
+	
+        // we define the canvas and context based on the instructions from w3 schools
+    var canvas = $("#canvas")[0];
+	var canvas2 = $("#drawing-area")[0];
+    var context = canvas.getContext("2d");
+	var context2 = canvas2.getContext("2d");
+	var previousTime=Date.now();
+	var path=[];
+        //we want to draw when the mouse is dragged, which means it is clicked and moving at the same time. The below 2 functions track when the mouse is clicked.
+    var mouseclicked = false
+ 
+   $('body').mousedown (function(e) {
+        mouseclicked = true;
+    });
+ 
+    $('body').mouseup (function(e) {
+		socket.emit('canvasdraw', {"path":path, "width":$("#width").val(), "fillColor":$("#fill").val(), "borderColor":$("#border").val()});
+		path=[];
+		oldMousePos.x = null;
+		oldMousePos.y = null;
+        mouseclicked = false;
+    });
+	socket.emit('getImage');
+        // when the mouse if moving and is clicked, we get the x and y position of the mouse pointer and pass in that information and our color to the drawDot function to start drawing!
+    $('body').mousemove (function(e) {
+        if(mouseclicked === true && Date.now()-previousTime>=10) {
+			var mousePos = {};
+			var parentOffset = $("#canvas").parent().offset(); 
+            mousePos.x = e.pageX - parentOffset.left;;
+            mousePos.y = e.pageY - parentOffset.top;;
+			path.push(mousePos);
+			//console.log(mousePos);
+			//console.log(path);
+			if(oldMousePos.x == null || oldMousePos.y == null)
+				drawLine(context, '#000000', mousePos, mousePos, 2);
+			else
+				drawLine(context, '#000000', mousePos, oldMousePos, 2);
+			oldMousePos.x=mousePos.x;
+			oldMousePos.y=mousePos.y;
+			previousTime=Date.now();
+        };
+    });
+	$("#width").change(function(){
+		$( "label[for='width']" ).last().text("Width: "+$("#width").val());
+	});
+	socket.on('draw', function(msg){
+	
+		//console.log(msg.mousePos);
+		//$(drawLine(context, '#000000', msg.mousePos, msg.oldMousePos, 2));
+		var img = new Image;
+		//console.log(msg);
+		img.src = msg;
+		context.drawImage(img,0,0);
+		context2.clearRect(0, 0, 999, 333);
+    });
+	$( "body" ).keypress(function( event ) {
+	  if ( event.which >= 49 && event.which<= 57 ) {
+		 $("#width").val(event.which-48);
+		 $("#width").change();
+	  }
+	});
+
+});</script>
+  </body>
+</html>
